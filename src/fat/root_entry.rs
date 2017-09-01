@@ -57,7 +57,9 @@ impl RootEntry {
         -> Result<(), Box<error::Error>>
     {
         let parts: Vec<_> = filename.split('.').collect();
-        if parts.len() != 2 {
+        if parts.len() != 2
+            || parts[0].len() > 8
+            || parts[1].len() > 3 {
             return Err(From::from(format!("bad filename: \"{}\"", filename)));
         }
         self.filename.clone_from_slice(parts[0].to_uppercase().as_bytes());

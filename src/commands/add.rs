@@ -1,22 +1,36 @@
 use std::error;
 use std::fs;
 use std::io::Read;
+use std::path::Path;
 
 use itertools::Itertools;
 
 use fat;
+
+
+/// Convert the provided filename into something acceptable (8+3)
+fn filename_to_dos(file_path: String) -> Result<String,Box<error::Error>> {
+    let file_name = match Path::new(&file_path).file_name() {
+        Some(f) => f.to_string_lossy().into_owned(),
+        None => {
+            return Err(errorf!("Unable to determine DOS filename of {}", file_path));
+        }
+    };
+    Ok(file_name)
+}
 
 pub fn add_file(args: &[String])
     -> Result<(), Box<error::Error>>
 {
     expect_args!(args, 2);
 
-    let file_name  = args[0].clone();
-    let image_name = args[1].clone();
-    let fat_file_name = if args.len() > 2 {
-        args[2].clone()
-    } else {
-        file_name.clone()
+    let file_name  = args[0].clone().to_string();
+    let image_name = args[1].clone().to_string();
+    let dos_file_name = match filename_to_dos(file_name.clone()) {
+        Ok(f) => f,
+        Err(e) => {
+            panic!(format!("Error calculating DOS filename: {:?}", e));
+        },
     };
 
     let mut image = fat::Image::from_file(image_name.clone())?;
@@ -30,7 +44,7 @@ pub fn add_file(args: &[String])
     let file = fs::File::open(file_name)?;
 
     // Create a root dir entry.
-    let (entry, index) = image.create_file_entry(fat_file_name)?;
+    let (entry, index) = image.create_file_entry(dos_file_name)?;
 
     // Get free FAT entries, fill sectors with file data.
     for chunk in &file.bytes().chunks(image.sector_size()) {
